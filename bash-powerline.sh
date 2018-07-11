@@ -11,10 +11,16 @@ __powerline() {
     readonly COLOR_SUCCESS='\[\033[0;32m\]' # green
     readonly COLOR_FAILURE='\[\033[0;31m\]' # red
 
+    # Custom colorscheme
+    readonly COLOR_VENV='\[\033[1;32m\]' # light green
+
     readonly SYMBOL_GIT_BRANCH='⑂'
     readonly SYMBOL_GIT_MODIFIED='*'
     readonly SYMBOL_GIT_PUSH='↑'
     readonly SYMBOL_GIT_PULL='↓'
+
+    # Custom unicode symbols
+    readonly PY_VENV_PYTHON='🐍'
 
     if [[ -z "$PS_SYMBOL" ]]; then
       case "$(uname)" in
@@ -34,7 +40,7 @@ __powerline() {
 
         if [[ -n "$ref" ]]; then
             # prepend branch symbol
-            ref=$SYMBOL_GIT_BRANCH$ref
+            ref="$SYMBOL_GIT_BRANCH $ref"
         else
             # get tag name or short unique hash
             ref=$($git_eng describe --tags --always 2>/dev/null)
@@ -56,7 +62,16 @@ __powerline() {
         done < <($git_eng status --porcelain --branch 2>/dev/null)  # note the space between the two <
 
         # print the git branch segment without a trailing newline
-        printf " $ref$marks"
+        printf " $ref $marks"
+    }
+    
+    # Custom function for getting the name of the current virtualenv. Ignores
+    # system if no virtualenv is active because who cares.
+    __pyenv_virtualenv_info() {
+        local venv="$(pyenv version-name)"
+        if [[ "$venv" != "system" ]]; then # No one cares
+            printf " $PY_VENV_PYTHON $venv"
+        fi
     }
 
     ps1() {
@@ -76,13 +91,16 @@ __powerline() {
         # Related fix in git-bash: https://github.com/git/git/blob/9d77b0405ce6b471cb5ce3a904368fc25e55643d/contrib/completion/git-prompt.sh#L324
         if shopt -q promptvars; then
             __powerline_git_info="$(__git_info)"
+            __powerline_virtualenv_info="$(__pyenv_virtualenv_info)"
             local git="$COLOR_GIT\${__powerline_git_info}$RESET"
+            local pyenv="$COLOR_VENV\${__powerline_virtualenv_info}$RESET"
         else
             # promptvars is disabled. Avoid creating unnecessary env var.
             local git="$COLOR_GIT$(__git_info)$RESET"
+            local pyenv="$COLOR_VENV$(__pyenv_virtualenv_info)$RESET"
         fi
 
-        PS1="$cwd$git$symbol"
+        PS1="$cwd$pyenv$git$symbol"
     }
 
     PROMPT_COMMAND="ps1${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
